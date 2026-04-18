@@ -6,10 +6,13 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 import urllib.request
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load environment variables from .env file in the same directory
+env_path = Path(__file__).parent / '.env'
+load_dotenv(env_path)
 
 
 class IncidentWebhook:

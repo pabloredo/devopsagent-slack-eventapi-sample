@@ -10,6 +10,13 @@ if [ -z "$SLACK_SIGNING_SECRET" ]; then
     exit 1
 fi
 
+# Check if SLACK_BOT_TOKEN is set
+if [ -z "$SLACK_BOT_TOKEN" ]; then
+    echo "Error: SLACK_BOT_TOKEN environment variable is not set."
+    echo "Set it with: export SLACK_BOT_TOKEN='your-bot-token'"
+    exit 1
+fi
+
 # Install dependencies if needed
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."

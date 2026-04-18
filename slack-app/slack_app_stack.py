@@ -19,6 +19,11 @@ class SlackAppStack(Stack):
                                os.getenv('SLACK_SIGNING_SECRET') or \
                                'REPLACE_WITH_YOUR_SIGNING_SECRET'
 
+        # Get Slack bot token from context or environment
+        slack_bot_token = self.node.try_get_context('slackBotToken') or \
+                          os.getenv('SLACK_BOT_TOKEN') or \
+                          'REPLACE_WITH_YOUR_BOT_TOKEN'
+
         # Lambda function for handling Slack events
         slack_event_function = _lambda.Function(
             self,
@@ -48,6 +53,7 @@ class SlackAppStack(Stack):
             memory_size=256,
             environment={
                 'SLACK_SIGNING_SECRET': slack_signing_secret,
+                'SLACK_BOT_TOKEN': slack_bot_token,
             },
             log_retention=logs.RetentionDays.ONE_WEEK,
         )
