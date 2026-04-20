@@ -43,25 +43,18 @@ A minimal AWS Lambda function with API Gateway for receiving Slack Event API req
          │  • Verify Slack signature                │
          │  • Handle events & commands              │
          │  • Generate incident IDs                 │
-         └────┬─────────────────────┬───────────────┘
-              │                     │
-              │ IAM GetSecret       │ HTTPS POST
-              ▼                     │ (signed webhook)
-    ┌──────────────────┐            │
-    │  Secrets Manager │            ▼
-    │  • Bot Token     │  ┌────────────────────────┐
-    │  • Signing Key   │  │  AgentCore Webhook     │
-    │  • Webhook URL   │  │  • Incident creation   │
-    │  • Webhook Secret│  │  • Investigation queue │
-    └──────────────────┘  └────────────────────────┘
-              │
-              │ Slack API
-              │ chat.postMessage
-              ▼
-         ┌─────────────────────┐
-         │   Slack Channel     │
-         │   (confirmation)    │
-         └─────────────────────┘
+         └────┬────────────────┬────────────────────┘
+              │                │
+              │ IAM            │ HTTPS POST           Slack API
+              │ GetSecret      │ (signed webhook)     chat.postMessage
+              ▼                ▼                      ▼
+    ┌──────────────────┐  ┌────────────────────┐  ┌─────────────────┐
+    │  Secrets Manager │  │  AgentCore Webhook │  │  Slack Channel  │
+    │  • Bot Token     │  │  • Incident        │  │  (confirmation) │
+    │  • Signing Key   │  │    creation        │  └─────────────────┘
+    │  • Webhook URL   │  │  • Investigation   │
+    │  • Webhook Secret│  │    queue           │
+    └──────────────────┘  └────────────────────┘
 ```
 
 **Workflow:**
