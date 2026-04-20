@@ -186,18 +186,27 @@ def lambda_handler(event, context):
         # Handle slash commands
         if payload.get('command'):
             command = payload.get('command')
+            channel_id = payload.get('channel_id')
+            user_id = payload.get('user_id')
+            text = payload.get('text', '')
+
             print(f"Received slash command: {command}")
-            print(f"Headers: {json.dumps(headers, indent=2)}")
-            print(f"Body: {body}")
-            print(f"Payload: {json.dumps(payload, indent=2)}")
+            print(f"Channel: {channel_id}")
+            print(f"User: {user_id}")
+            print(f"Text: {text}")
 
-            # Add your command handling logic here
+            # Post confirmation message to the channel
+            message = f"I received your request. Working on the investigation..."
+            print(f"Calling post_slack_message for slash command...")
+            result = post_slack_message(channel_id, message)
+            print(f"post_slack_message returned: {result}")
 
+            # Return immediate acknowledgment (this is required for slash commands)
             return {
                 'statusCode': 200,
                 'body': json.dumps({
-                    'response_type': 'ephemeral',
-                    'text': f'Received command: {command}'
+                    'response_type': 'in_channel',
+                    'text': f'Investigation started for: {text}'
                 })
             }
 

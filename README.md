@@ -101,7 +101,31 @@ chmod +x deploy.sh
 4. Subscribe to the events you need (e.g., `app_mention`, `message.channels`)
 5. Save changes
 
-### 4. Configure Interactive Components (Optional)
+### 4. Invite the Bot to Your Channel
+
+**Important:** The bot must be invited to any channel where you want it to respond.
+
+1. Open the Slack channel where you want the bot to work (e.g., `#aws-agentcore`)
+2. Type the following command:
+   ```
+   /invite @your-bot-name
+   ```
+   (Replace `your-bot-name` with your actual bot name, e.g., `@awsdevopsagent`)
+3. Press Enter
+
+The bot will now be able to read messages and respond in that channel.
+
+### 5. Test the Bot
+
+Mention the bot in the channel to test it:
+```
+@your-bot-name hello
+```
+
+The bot should respond with:
+> "I received your request. Working on the investigation..."
+
+### 6. Configure Interactive Components (Optional)
 
 If you want to handle button clicks, modals, etc.:
 
@@ -209,6 +233,30 @@ The test suite validates:
 - Event callback handling (app_mention, message)
 - Request signature verification
 
+**Test Bot Message Posting Locally:**
+
+Before deploying or if you encounter issues, test that the bot can post messages:
+
+```bash
+cd test-endpoint
+python3 test_post_message.py CHANNEL_ID
+```
+
+To get your channel ID:
+- Right-click on the channel in Slack
+- Click "View channel details"
+- Scroll down and copy the Channel ID (starts with `C`)
+
+Example:
+```bash
+python3 test_post_message.py C0123456789
+```
+
+**Common errors:**
+- `not_in_channel`: The bot needs to be invited to the channel first using `/invite @your-bot-name`
+- `invalid_auth`: The bot token is invalid or expired - get a new one from Slack app settings
+- `missing_scope`: Add the `chat:write` OAuth scope in your Slack app settings
+
 ### Webhook Testing
 
 The `test-webhook/` directory contains utilities for testing webhook connectivity with AgentCore.
@@ -235,3 +283,47 @@ python test_incident.py
 ```
 
 This verifies that your AgentCore webhook integration is working correctly before deploying to production.
+
+---
+
+## Troubleshooting
+
+### Bot Not Responding in Slack
+
+If the bot doesn't respond when mentioned:
+
+1. **Check if the bot is in the channel:**
+   - The bot must be invited to the channel using `/invite @your-bot-name`
+
+2. **Verify bot token is correct:**
+   - Run `python3 test_post_message.py CHANNEL_ID` in the `test-endpoint/` directory
+   - If authentication fails, get a new bot token from Slack app settings
+
+3. **Check Lambda logs:**
+   ```bash
+   aws logs tail /aws/lambda/SlackAppStack-SlackEventFunction93C02593-b63WSAE4Pun4 --follow
+   ```
+   Look for error messages in the logs
+
+4. **Verify Event Subscriptions:**
+   - Make sure `app_mentions:read` event is subscribed in Slack app settings
+   - Verify the Request URL matches your deployed Lambda URL
+
+### `invalid_auth` Error
+
+This usually means:
+- Bot token is invalid or has been regenerated
+- Bot token doesn't have the required OAuth scopes (`chat:write`, `app_mentions:read`)
+- Redeploy with the correct bot token:
+  ```bash
+  export SLACK_BOT_TOKEN='xoxb-your-new-token'
+  cd slack-app
+  ./deploy.sh
+  ```
+
+### `not_in_channel` Error
+
+The bot needs to be added to the channel:
+```
+/invite @your-bot-name
+```
