@@ -24,6 +24,15 @@ class SlackAppStack(Stack):
                           os.getenv('SLACK_BOT_TOKEN') or \
                           'REPLACE_WITH_YOUR_BOT_TOKEN'
 
+        # Get webhook configuration from context or environment
+        webhook_secret = self.node.try_get_context('webhookSecret') or \
+                         os.getenv('WEBHOOK_SECRET') or \
+                         'REPLACE_WITH_YOUR_WEBHOOK_SECRET'
+
+        webhook_url = self.node.try_get_context('webhookUrl') or \
+                      os.getenv('WEBHOOK_URL') or \
+                      'REPLACE_WITH_YOUR_WEBHOOK_URL'
+
         # Lambda function for handling Slack events
         slack_event_function = _lambda.Function(
             self,
@@ -54,6 +63,8 @@ class SlackAppStack(Stack):
             environment={
                 'SLACK_SIGNING_SECRET': slack_signing_secret,
                 'SLACK_BOT_TOKEN': slack_bot_token,
+                'WEBHOOK_SECRET': webhook_secret,
+                'WEBHOOK_URL': webhook_url,
             },
             log_retention=logs.RetentionDays.ONE_WEEK,
         )

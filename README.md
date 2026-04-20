@@ -24,8 +24,18 @@ A minimal AWS Lambda function with API Gateway for receiving Slack Event API req
 
 **Architecture:**
 ```
-Slack → API Gateway → Lambda Function
+Slack → API Gateway → Lambda Function → AWS DevOps Agent Webhook
+                           ↓
+                     Slack Channel (response)
 ```
+
+**Workflow:**
+1. User runs `/investigate` command in Slack
+2. Lambda receives the slash command
+3. Lambda generates an incident ID
+4. Lambda sends incident to AWS DevOps Agent webhook
+5. Lambda posts confirmation message back to Slack channel
+6. AWS DevOps Agent processes the investigation
 
 ### `test-endpoint/`
 Test scripts for validating the deployed Slack Event API endpoint.
@@ -51,8 +61,9 @@ Test scripts for validating webhook connectivity with AgentCore.
 2. Node.js and npm (for AWS CDK CLI)
 3. Python 3.11+
 4. AWS CDK CLI: `npm install -g aws-cdk`
-5. A Slack app with Event Subscriptions enabled
+5. A Slack app with Event Subscriptions and Slash Commands enabled
 6. Your Slack app's Signing Secret and Bot Token
+7. AWS DevOps Agent webhook URL and secret (for investigation automation)
 
 ## Setup
 
@@ -71,12 +82,21 @@ Test scripts for validating webhook connectivity with AgentCore.
    - `chat:write` - To send messages
    - `app_mentions:read` - To receive mention events
 
+**Webhook Credentials (for AWS DevOps Agent):**
+1. Get your webhook URL from AWS DevOps Agent
+2. Get your webhook secret for request signing
+3. These credentials enable the Lambda to trigger investigations in AWS DevOps Agent
+
 ### 2. Deploy to AWS
 
 ```bash
-# Set your Slack signing secret and bot token
+# Set your Slack credentials
 export SLACK_SIGNING_SECRET='your-signing-secret-here'
 export SLACK_BOT_TOKEN='xoxb-your-bot-token-here'
+
+# Set your webhook credentials for AWS DevOps Agent integration
+export WEBHOOK_SECRET='your-webhook-secret'
+export WEBHOOK_URL='https://your-webhook-url'
 
 # Make the deploy script executable
 chmod +x deploy.sh
@@ -117,7 +137,17 @@ The bot will now be able to read messages and respond in that channel.
 
 ### 5. Test the Bot
 
-Mention the bot in the channel to test it:
+**Using Slash Commands (triggers investigation):**
+```
+/investigate Lambda performance issues in production
+```
+
+The bot will:
+1. Create an incident ID (e.g., `SLACK-1776703420`)
+2. Send the incident to AWS DevOps Agent webhook
+3. Post a confirmation message with the incident ID
+
+**Using @mentions:**
 ```
 @your-bot-name hello
 ```

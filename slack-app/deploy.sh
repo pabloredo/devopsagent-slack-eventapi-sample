@@ -17,6 +17,20 @@ if [ -z "$SLACK_BOT_TOKEN" ]; then
     exit 1
 fi
 
+# Check if WEBHOOK_SECRET is set
+if [ -z "$WEBHOOK_SECRET" ]; then
+    echo "Error: WEBHOOK_SECRET environment variable is not set."
+    echo "Set it with: export WEBHOOK_SECRET='your-webhook-secret'"
+    exit 1
+fi
+
+# Check if WEBHOOK_URL is set
+if [ -z "$WEBHOOK_URL" ]; then
+    echo "Error: WEBHOOK_URL environment variable is not set."
+    echo "Set it with: export WEBHOOK_URL='your-webhook-url'"
+    exit 1
+fi
+
 # Install dependencies if needed
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."

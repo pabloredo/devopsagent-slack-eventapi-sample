@@ -6,6 +6,8 @@ import os
 from urllib.parse import parse_qs
 import urllib.request
 import urllib.error
+import base64
+from datetime import datetime, timezone
 
 def verify_slack_request(body, timestamp, signature):
     """Verify the request is from Slack using the signing secret."""
@@ -49,6 +51,7 @@ def post_slack_message(channel, text, thread_ts=None):
         payload['thread_ts'] = thread_ts
 
     print(f"Payload: {json.dumps(payload)}")
+    print(f"Using bot token: {bot_token[:15]}... (truncated for security)")
 
     try:
         req = urllib.request.Request(
@@ -56,7 +59,7 @@ def post_slack_message(channel, text, thread_ts=None):
             data=json.dumps(payload).encode('utf-8'),
             headers={
                 'Content-Type': 'application/json',
-                'Authorization': f'Bearer {bot_token[:10]}...'  # Only log first 10 chars for security
+                'Authorization': f'Bearer {bot_token}'
             },
             method='POST'
         )
@@ -83,6 +86,78 @@ def post_slack_message(channel, text, thread_ts=None):
         return False
     except Exception as e:
         print(f"❌ Exception posting message: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def send_webhook_incident(incident_id, title, description=None, priority="MEDIUM", service=None):
+    """Send incident to AWS DevOps Agent webhook"""
+    webhook_secret = os.environ.get('WEBHOOK_SECRET', '')
+    webhook_url = os.environ.get('WEBHOOK_URL', '')
+
+    print(f"Sending incident to webhook: {incident_id}")
+    print(f"Webhook URL: {webhook_url[:50]}..." if webhook_url else "No webhook URL configured")
+
+    if not webhook_secret or not webhook_url:
+        print("WARNING: WEBHOOK_SECRET or WEBHOOK_URL not configured")
+        return False
+
+    # Build incident payload
+    payload = {
+        "eventType": "incident",
+        "incidentId": incident_id,
+        "action": "created",
+        "priority": priority,
+        "title": title,
+    }
+
+    if description:
+        payload["description"] = description
+    if service:
+        payload["service"] = service
+
+    # Add timestamp and metadata
+    payload["timestamp"] = datetime.now(timezone.utc).isoformat()
+    payload["data"] = {
+        "source": "slack",
+        "automated": True
+    }
+
+    # Generate signature
+    ts = datetime.now(timezone.utc).isoformat()
+    body = json.dumps(payload)
+    signature = base64.b64encode(
+        hmac.new(webhook_secret.encode(), f"{ts}:{body}".encode(), hashlib.sha256).digest()
+    ).decode()
+
+    print(f"Webhook payload: {body}")
+
+    try:
+        req = urllib.request.Request(
+            webhook_url,
+            data=body.encode(),
+            headers={
+                "Content-Type": "application/json",
+                "x-amzn-event-timestamp": ts,
+                "x-amzn-event-signature": signature,
+            },
+            method="POST",
+        )
+
+        with urllib.request.urlopen(req) as resp:
+            status = resp.status
+            response_body = resp.read().decode()
+            print(f"✅ Webhook response: {status}")
+            print(f"Response body: {response_body}")
+            return True
+
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8') if e.fp else 'No error body'
+        print(f"❌ HTTP error sending webhook: {e.code} - {e.reason}")
+        print(f"Error body: {error_body}")
+        return False
+    except Exception as e:
+        print(f"❌ Exception sending webhook: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
@@ -188,25 +263,47 @@ def lambda_handler(event, context):
             command = payload.get('command')
             channel_id = payload.get('channel_id')
             user_id = payload.get('user_id')
+            user_name = payload.get('user_name', 'unknown')
             text = payload.get('text', '')
+            channel_name = payload.get('channel_name', 'unknown')
 
             print(f"Received slash command: {command}")
-            print(f"Channel: {channel_id}")
-            print(f"User: {user_id}")
+            print(f"Channel: {channel_id} ({channel_name})")
+            print(f"User: {user_id} ({user_name})")
             print(f"Text: {text}")
 
+            # Generate incident ID based on timestamp
+            incident_id = f"SLACK-{int(time.time())}"
+
+            # Send incident to webhook
+            title = text if text else "Investigation requested via Slack"
+            description = f"Investigation requested by {user_name} in #{channel_name}"
+
+            print(f"Triggering investigation: {incident_id}")
+            webhook_result = send_webhook_incident(
+                incident_id=incident_id,
+                title=title,
+                description=description,
+                priority="HIGH",
+                service=channel_name
+            )
+
             # Post confirmation message to the channel
-            message = f"I received your request. Working on the investigation..."
+            if webhook_result:
+                message = f"🔍 Investigation started: {incident_id}\n\n*Issue:* {title}\n\nI'm working on this now..."
+            else:
+                message = f"⚠️ Investigation request received but webhook failed. Incident ID: {incident_id}"
+
             print(f"Calling post_slack_message for slash command...")
-            result = post_slack_message(channel_id, message)
-            print(f"post_slack_message returned: {result}")
+            post_result = post_slack_message(channel_id, message)
+            print(f"post_slack_message returned: {post_result}")
 
             # Return immediate acknowledgment (this is required for slash commands)
             return {
                 'statusCode': 200,
                 'body': json.dumps({
                     'response_type': 'in_channel',
-                    'text': f'Investigation started for: {text}'
+                    'text': f'✅ Investigation {incident_id} initiated'
                 })
             }
 
