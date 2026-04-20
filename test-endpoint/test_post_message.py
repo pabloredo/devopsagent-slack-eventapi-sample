@@ -8,7 +8,6 @@ import os
 import sys
 import json
 import urllib.request
-import ssl
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -17,7 +16,6 @@ env_path = Path(__file__).parent / '.env'
 load_dotenv(env_path)
 
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
-ssl_context = ssl._create_unverified_context()
 
 def post_message(channel_id, message="Test message from local script"):
     """Post a message to the specified channel"""
@@ -46,7 +44,7 @@ def post_message(channel_id, message="Test message from local script"):
             method='POST'
         )
 
-        with urllib.request.urlopen(req, context=ssl_context) as response:
+        with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode('utf-8'))
 
             print("API Response:")
