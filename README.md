@@ -283,7 +283,7 @@ Perfect for simple bots, webhooks, or as a starting point for more complex apps.
 Install required Python packages:
 
 ```bash
-pip install requests python-dotenv
+pip install requests python-dotenv certifi
 ```
 
 ### Endpoint Testing

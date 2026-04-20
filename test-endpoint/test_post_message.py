@@ -7,6 +7,7 @@ Usage: python3 test_post_message.py CHANNEL_ID
 import os
 import sys
 import json
+import ssl
 import urllib.request
 from pathlib import Path
 from dotenv import load_dotenv
@@ -16,6 +17,14 @@ env_path = Path(__file__).parent / '.env'
 load_dotenv(env_path)
 
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+
+# Create secure SSL context with proper certificate verification
+try:
+    import certifi
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    # Fall back to default context if certifi is not available
+    ssl_context = ssl.create_default_context()
 
 def post_message(channel_id, message="Test message from local script"):
     """Post a message to the specified channel"""
@@ -44,7 +53,7 @@ def post_message(channel_id, message="Test message from local script"):
             method='POST'
         )
 
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, context=ssl_context) as response:
             result = json.loads(response.read().decode('utf-8'))
 
             print("API Response:")
