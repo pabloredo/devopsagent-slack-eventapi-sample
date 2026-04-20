@@ -1,6 +1,8 @@
 # DevOps Agent
 
-A project for testing and integrating DevOps automation with Slack and AgentCore webhooks.
+A sample integration of Slack with AWS DevOps Agent webhooks to trigger the execution of an incident.
+
+**Note:** Incident response communication is already available natively in AWS DevOps Agent. See the [official documentation](https://docs.aws.amazon.com/devopsagent/latest/userguide/connecting-to-ticketing-and-chat-connecting-slack.html) for native Slack integration.
 
 ## License
 
