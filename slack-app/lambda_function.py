@@ -8,10 +8,48 @@ import urllib.request
 import urllib.error
 import base64
 from datetime import datetime, timezone
+import boto3
+from botocore.exceptions import ClientError
+
+# Cache for secrets to avoid repeated API calls
+_secrets_cache = None
+
+def get_secrets():
+    """Retrieve secrets from AWS Secrets Manager"""
+    global _secrets_cache
+
+    # Return cached secrets if available
+    if _secrets_cache is not None:
+        return _secrets_cache
+
+    secret_arn = os.environ.get('SECRET_ARN')
+    if not secret_arn:
+        raise ValueError("SECRET_ARN environment variable not set")
+
+    print(f"Retrieving secrets from Secrets Manager: {secret_arn}")
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(service_name='secretsmanager')
+
+    try:
+        get_secret_value_response = client.get_secret_value(SecretId=secret_arn)
+        secret_string = get_secret_value_response['SecretString']
+        secrets = json.loads(secret_string)
+
+        # Cache the secrets
+        _secrets_cache = secrets
+        print("✅ Secrets retrieved successfully")
+        return secrets
+
+    except ClientError as e:
+        print(f"❌ Error retrieving secrets: {e}")
+        raise e
 
 def verify_slack_request(body, timestamp, signature):
     """Verify the request is from Slack using the signing secret."""
-    signing_secret = os.environ.get('SLACK_SIGNING_SECRET', '')
+    secrets = get_secrets()
+    signing_secret = secrets.get('SLACK_SIGNING_SECRET', '')
 
     # Check if timestamp is within 5 minutes
     if abs(time.time() - int(timestamp)) > 60 * 5:
@@ -32,14 +70,15 @@ def verify_slack_request(body, timestamp, signature):
 
 def post_slack_message(channel, text, thread_ts=None):
     """Post a message to Slack using the Web API."""
-    bot_token = os.environ.get('SLACK_BOT_TOKEN', '')
+    secrets = get_secrets()
+    bot_token = secrets.get('SLACK_BOT_TOKEN', '')
 
     print(f"Attempting to post message to channel: {channel}")
     print(f"Message text: {text}")
     print(f"Thread ts: {thread_ts}")
 
-    if not bot_token or bot_token == 'REPLACE_WITH_YOUR_BOT_TOKEN':
-        print("ERROR: SLACK_BOT_TOKEN not configured")
+    if not bot_token:
+        print("ERROR: SLACK_BOT_TOKEN not configured in secrets")
         return False
 
     payload = {
@@ -92,14 +131,15 @@ def post_slack_message(channel, text, thread_ts=None):
 
 def send_webhook_incident(incident_id, title, description=None, priority="MEDIUM", service=None):
     """Send incident to AWS DevOps Agent webhook"""
-    webhook_secret = os.environ.get('WEBHOOK_SECRET', '')
-    webhook_url = os.environ.get('WEBHOOK_URL', '')
+    secrets = get_secrets()
+    webhook_secret = secrets.get('WEBHOOK_SECRET', '')
+    webhook_url = secrets.get('WEBHOOK_URL', '')
 
     print(f"Sending incident to webhook: {incident_id}")
     print(f"Webhook URL: {webhook_url[:50]}..." if webhook_url else "No webhook URL configured")
 
     if not webhook_secret or not webhook_url:
-        print("WARNING: WEBHOOK_SECRET or WEBHOOK_URL not configured")
+        print("WARNING: WEBHOOK_SECRET or WEBHOOK_URL not configured in secrets")
         return False
 
     # Build incident payload

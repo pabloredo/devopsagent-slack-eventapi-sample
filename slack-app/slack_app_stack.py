@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_lambda as _lambda,
     aws_apigateway as apigateway,
     aws_logs as logs,
+    aws_secretsmanager as secretsmanager,
 )
 from constructs import Construct
 
@@ -14,24 +15,30 @@ class SlackAppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # Get Slack signing secret from context or environment
-        slack_signing_secret = self.node.try_get_context('slackSigningSecret') or \
-                               os.getenv('SLACK_SIGNING_SECRET') or \
-                               'REPLACE_WITH_YOUR_SIGNING_SECRET'
+        # Create or reference Secrets Manager secret
+        # The secret should contain all credentials in JSON format
+        secret_name = "slack-app/credentials"
 
-        # Get Slack bot token from context or environment
-        slack_bot_token = self.node.try_get_context('slackBotToken') or \
-                          os.getenv('SLACK_BOT_TOKEN') or \
-                          'REPLACE_WITH_YOUR_BOT_TOKEN'
-
-        # Get webhook configuration from context or environment
-        webhook_secret = self.node.try_get_context('webhookSecret') or \
-                         os.getenv('WEBHOOK_SECRET') or \
-                         'REPLACE_WITH_YOUR_WEBHOOK_SECRET'
-
-        webhook_url = self.node.try_get_context('webhookUrl') or \
-                      os.getenv('WEBHOOK_URL') or \
-                      'REPLACE_WITH_YOUR_WEBHOOK_URL'
+        # Try to import existing secret, or create placeholder for first deployment
+        try:
+            slack_credentials_secret = secretsmanager.Secret.from_secret_name_v2(
+                self,
+                "SlackCredentials",
+                secret_name
+            )
+        except:
+            # Create a new secret if it doesn't exist
+            # Note: You'll need to update this secret with actual values after deployment
+            slack_credentials_secret = secretsmanager.Secret(
+                self,
+                "SlackCredentials",
+                secret_name=secret_name,
+                description="Slack app and webhook credentials",
+                generate_secret_string=secretsmanager.SecretStringGenerator(
+                    secret_string_template='{"SLACK_SIGNING_SECRET":"placeholder","SLACK_BOT_TOKEN":"placeholder","WEBHOOK_SECRET":"placeholder","WEBHOOK_URL":"placeholder"}',
+                    generate_string_key="placeholder_key"
+                )
+            )
 
         # Lambda function for handling Slack events
         slack_event_function = _lambda.Function(
@@ -61,13 +68,13 @@ class SlackAppStack(Stack):
             timeout=Duration.seconds(30),
             memory_size=256,
             environment={
-                'SLACK_SIGNING_SECRET': slack_signing_secret,
-                'SLACK_BOT_TOKEN': slack_bot_token,
-                'WEBHOOK_SECRET': webhook_secret,
-                'WEBHOOK_URL': webhook_url,
+                'SECRET_ARN': slack_credentials_secret.secret_arn,
             },
             log_retention=logs.RetentionDays.ONE_WEEK,
         )
+
+        # Grant Lambda permission to read the secret
+        slack_credentials_secret.grant_read(slack_event_function)
 
         # API Gateway
         api = apigateway.RestApi(

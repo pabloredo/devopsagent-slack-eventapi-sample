@@ -31,6 +31,11 @@ if [ -z "$WEBHOOK_URL" ]; then
     exit 1
 fi
 
+# Update secrets in AWS Secrets Manager
+echo "Updating secrets in AWS Secrets Manager..."
+chmod +x update-secrets.sh
+./update-secrets.sh
+
 # Install dependencies if needed
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."

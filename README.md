@@ -24,9 +24,44 @@ A minimal AWS Lambda function with API Gateway for receiving Slack Event API req
 
 **Architecture:**
 ```
-Slack → API Gateway → Lambda Function → AWS DevOps Agent Webhook
-                           ↓
-                     Slack Channel (response)
+┌─────────────────────────────────────────────────────────────────────┐
+│                              Slack                                  │
+│  • /investigate command                                             │
+│  • @mentions                                                        │
+│  • Event callbacks                                                  │
+└──────────────────┬──────────────────────────────────────────────────┘
+                   │ HTTPS POST (signed request)
+                   ▼
+         ┌─────────────────────┐
+         │   API Gateway       │
+         │   /slack/events     │
+         └──────────┬──────────┘
+                    │
+                    ▼
+         ┌──────────────────────────────────────────┐
+         │        Lambda Function                   │
+         │  • Verify Slack signature                │
+         │  • Handle events & commands              │
+         │  • Generate incident IDs                 │
+         └────┬─────────────────────┬───────────────┘
+              │                     │
+              │ IAM GetSecret       │ HTTPS POST
+              ▼                     │ (signed webhook)
+    ┌──────────────────┐            │
+    │  Secrets Manager │            ▼
+    │  • Bot Token     │  ┌────────────────────────┐
+    │  • Signing Key   │  │  AgentCore Webhook     │
+    │  • Webhook URL   │  │  • Incident creation   │
+    │  • Webhook Secret│  │  • Investigation queue │
+    └──────────────────┘  └────────────────────────┘
+              │
+              │ Slack API
+              │ chat.postMessage
+              ▼
+         ┌─────────────────────┐
+         │   Slack Channel     │
+         │   (confirmation)    │
+         └─────────────────────┘
 ```
 
 **Workflow:**
@@ -89,6 +124,8 @@ Test scripts for validating webhook connectivity with AgentCore.
 
 ### 2. Deploy to AWS
 
+The deployment process automatically stores all credentials securely in AWS Secrets Manager:
+
 ```bash
 # Set your Slack credentials
 export SLACK_SIGNING_SECRET='your-signing-secret-here'
@@ -101,9 +138,11 @@ export WEBHOOK_URL='https://your-webhook-url'
 # Make the deploy script executable
 chmod +x deploy.sh
 
-# Deploy
+# Deploy (this will automatically update AWS Secrets Manager)
 ./deploy.sh
 ```
+
+**Security Note:** Credentials are stored in AWS Secrets Manager, not as plain text environment variables in the Lambda. The Lambda retrieves secrets at runtime using IAM permissions.
 
 ### 3. Configure Slack Event Subscriptions
 
@@ -192,12 +231,34 @@ View logs in CloudWatch:
 aws logs tail /aws/lambda/<function-name> --follow
 ```
 
+## Updating Secrets
+
+If you need to update credentials without redeploying:
+
+```bash
+# Set your updated credentials
+export SLACK_SIGNING_SECRET='your-signing-secret-here'
+export SLACK_BOT_TOKEN='xoxb-your-bot-token-here'
+export WEBHOOK_SECRET='your-webhook-secret'
+export WEBHOOK_URL='https://your-webhook-url'
+
+# Update secrets in AWS Secrets Manager
+cd slack-app
+chmod +x update-secrets.sh
+./update-secrets.sh
+```
+
+The Lambda will automatically use the updated credentials on the next invocation (secrets are cached per Lambda instance).
+
 ## Cleanup
 
 Remove all resources:
 
 ```bash
 cdk destroy
+
+# Optionally, delete the secrets from Secrets Manager
+aws secretsmanager delete-secret --secret-id slack-app/credentials --force-delete-without-recovery
 ```
 
 ## What's Different from the Reference App?
