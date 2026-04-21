@@ -20,6 +20,7 @@ load_dotenv(env_path)
 # Configuration
 API_URL = os.getenv("SLACK_API_URL")
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
+HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "15"))  # Default 15 seconds
 
 if not API_URL or not SLACK_SIGNING_SECRET:
     raise ValueError(
@@ -60,7 +61,7 @@ def test_url_verification():
     }
 
     try:
-        response = requests.post(API_URL, data=body, headers=headers)
+        response = requests.post(API_URL, data=body, headers=headers, timeout=HTTP_TIMEOUT)
         print(f"Status Code: {response.status_code}")
         print(f"Response: {response.text}")
 
@@ -109,7 +110,7 @@ def test_app_mention_event():
     }
 
     try:
-        response = requests.post(API_URL, data=body, headers=headers)
+        response = requests.post(API_URL, data=body, headers=headers, timeout=HTTP_TIMEOUT)
         print(f"Status Code: {response.status_code}")
         print(f"Response: {response.text}")
 
@@ -153,7 +154,7 @@ def test_message_event():
     }
 
     try:
-        response = requests.post(API_URL, data=body, headers=headers)
+        response = requests.post(API_URL, data=body, headers=headers, timeout=HTTP_TIMEOUT)
         print(f"Status Code: {response.status_code}")
         print(f"Response: {response.text}")
 
@@ -187,7 +188,7 @@ def test_invalid_signature():
     }
 
     try:
-        response = requests.post(API_URL, data=body, headers=headers)
+        response = requests.post(API_URL, data=body, headers=headers, timeout=HTTP_TIMEOUT)
         print(f"Status Code: {response.status_code}")
         print(f"Response: {response.text}")
 
