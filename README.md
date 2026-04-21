@@ -139,6 +139,8 @@ chmod +x deploy.sh
 
 **Security Note:** Credentials are stored in AWS Secrets Manager, not as plain text environment variables in the Lambda. The Lambda retrieves secrets at runtime using IAM permissions.
 
+**Timeout Configuration:** All HTTP requests (Slack API, webhook) use a configurable timeout (default: 15 seconds) to prevent hanging connections. This can be adjusted via the `HTTP_TIMEOUT` environment variable in Lambda or test scripts.
+
 ### 3. Configure Slack Event Subscriptions
 
 1. After deployment, the API URL will be shown in the CDK outputs

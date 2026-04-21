@@ -11,6 +11,9 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+# Configuration
+HTTP_TIMEOUT = int(os.environ.get('HTTP_TIMEOUT', '15'))  # Default 15 seconds
+
 # Cache for secrets to avoid repeated API calls
 _secrets_cache = None
 
@@ -103,7 +106,7 @@ def post_slack_message(channel, text, thread_ts=None):
             method='POST'
         )
 
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as response:
             result = json.loads(response.read().decode('utf-8'))
             print(f"Slack API Response: {json.dumps(result)}")
 
@@ -184,7 +187,7 @@ def send_webhook_incident(incident_id, title, description=None, priority="MEDIUM
             method="POST",
         )
 
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
             status = resp.status
             response_body = resp.read().decode()
             print(f"✅ Webhook response: {status}")

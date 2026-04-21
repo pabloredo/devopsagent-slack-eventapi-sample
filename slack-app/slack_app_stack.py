@@ -69,6 +69,7 @@ class SlackAppStack(Stack):
             memory_size=256,
             environment={
                 'SECRET_ARN': slack_credentials_secret.secret_arn,
+                'HTTP_TIMEOUT': '15',
             },
             log_retention=logs.RetentionDays.ONE_WEEK,
         )

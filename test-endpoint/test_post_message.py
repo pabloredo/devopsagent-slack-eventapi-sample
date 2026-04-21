@@ -17,6 +17,7 @@ env_path = Path(__file__).parent / '.env'
 load_dotenv(env_path)
 
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "15"))  # Default 15 seconds
 
 # Create secure SSL context with proper certificate verification
 try:
@@ -53,7 +54,7 @@ def post_message(channel_id, message="Test message from local script"):
             method='POST'
         )
 
-        with urllib.request.urlopen(req, context=ssl_context) as response:
+        with urllib.request.urlopen(req, context=ssl_context, timeout=HTTP_TIMEOUT) as response:
             result = json.loads(response.read().decode('utf-8'))
 
             print("API Response:")

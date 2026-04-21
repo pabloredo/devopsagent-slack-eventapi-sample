@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent / '.env'
 load_dotenv(env_path)
 
+# Configuration
+HTTP_TIMEOUT = int(os.environ.get("HTTP_TIMEOUT", "15"))  # Default 15 seconds
+
 
 class IncidentWebhook:
     def __init__(self, secret: Optional[str] = None, webhook_url: Optional[str] = None):
@@ -63,5 +66,5 @@ class IncidentWebhook:
             },
             method="POST",
         )
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
             return resp.status, resp.read().decode()
