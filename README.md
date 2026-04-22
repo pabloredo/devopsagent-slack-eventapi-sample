@@ -50,13 +50,13 @@ A minimal AWS Lambda function with API Gateway for receiving Slack Event API req
               │ IAM            │ HTTPS POST           Slack API
               │ GetSecret      │ (signed webhook)     chat.postMessage
               ▼                ▼                      ▼
-    ┌──────────────────┐  ┌────────────────────┐  ┌─────────────────┐
-    │  Secrets Manager │  │  AgentCore Webhook │  │  Slack Channel  │
-    │  • Bot Token     │  │  • Incident        │  │  (confirmation) │
-    │  • Signing Key   │  │    creation        │  └─────────────────┘
-    │  • Webhook URL   │  │  • Investigation   │
-    │  • Webhook Secret│  │    queue           │
-    └──────────────────┘  └────────────────────┘
+    ┌──────────────────┐  ┌────────────────────--┐  ┌─────────────────┐
+    │  Secrets Manager │  │  DevOpsAgent Webhook │  │  Slack Channel  │
+    │  • Bot Token     │  │  • Incident          │  │  (confirmation) │
+    │  • Signing Key   │  │    creation          │  └─────────────────┘
+    │  • Webhook URL   │  │  • Investigation     │
+    │  • Webhook Secret│  │    queue             │
+    └──────────────────┘  └───────────────────--─┘
 ```
 
 **Workflow:**
@@ -75,9 +75,9 @@ Test scripts for validating the deployed Slack Event API endpoint.
 **Configuration:** Uses local `.env` file for Slack API URL and signing secret.
 
 ### `test-webhook/`
-Test scripts for validating webhook connectivity with AgentCore.
+Test scripts for validating webhook connectivity with DevOpsAgent.
 
-**Purpose:** Test and verify webhook integration with the AgentCore system for incident management and automation workflows.
+**Purpose:** Test and verify webhook integration with the DevOpsAgent system for incident management and automation workflows.
 
 **Configuration:** Uses local `.env` file for webhook URL and secret.
 
@@ -161,7 +161,7 @@ chmod +x deploy.sh
 
 **Important:** The bot must be invited to any channel where you want it to respond.
 
-1. Open the Slack channel where you want the bot to work (e.g., `#aws-agentcore`)
+1. Open the Slack channel where you want the bot to work (e.g., `#aws-DevOpsAgent`)
 2. Type the following command:
    ```
    /invite @your-bot-name
@@ -347,7 +347,7 @@ python3 test_post_message.py C0123456789
 
 ### Webhook Testing
 
-The `test-webhook/` directory contains utilities for testing webhook connectivity with AgentCore.
+The `test-webhook/` directory contains utilities for testing webhook connectivity with DevOpsAgent.
 
 **Setup:**
 
@@ -370,7 +370,7 @@ cd test-webhook
 python test_incident.py
 ```
 
-This verifies that your AgentCore webhook integration is working correctly before deploying to production.
+This verifies that your DevOpsAgent webhook integration is working correctly before deploying to production.
 
 ---
 
